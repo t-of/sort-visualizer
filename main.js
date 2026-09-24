@@ -82,7 +82,8 @@ function drawLane(k) {
   const cmp = e && e.t === 'compare' ? [e.i, e.j] : [];
   const moved = e && e.t === 'swap' ? [e.i, e.j] : e && e.t === 'write' ? [e.i] : [];
   for (let i = 0; i < n; i++) {
-    ctx.fillStyle = cmp.includes(i) ? CMP : moved.includes(i) ? MOVE : i === lane.focus ? FOCUS : lane.fixed[i] ? FIXED : INK;
+    // 注目はいつもピンク（クイックの基準・選択の今の最小は毎手比べられるので、比べているより先に決める。比べているのは下の三角で分かる）
+    ctx.fillStyle = i === lane.focus ? FOCUS : cmp.includes(i) ? CMP : moved.includes(i) ? MOVE : lane.fixed[i] ? FIXED : INK;
     const h = Math.max(1, Math.round((lane.a[i] / max) * (base - top)));
     const x = xAt(i);
     ctx.fillRect(x, base - h, Math.max(1, xAt(i + 1) - x - gapPx), h);
