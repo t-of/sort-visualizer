@@ -23,6 +23,72 @@ if ('serviceWorker' in navigator) {
 
 // ---- ここからアプリ本体 ----
 
+// ---- 音（Web Audio で作る。音声ファイルは使わない） ----
+// iPhone のマナーモードでも鳴らす（Safari 16.4 以降）。
+// 'playback' にすると音楽アプリの曲が止まるので、アプリの音がオンのときだけにする。
+function setAudioSession(soundOn) {
+  try { if (navigator.audioSession) navigator.audioSession.type = soundOn ? 'playback' : 'auto'; } catch { /* 対応していない */ }
+}
+const NOTE = (m) => 440 * 2 ** ((m - 69) / 12);
+const Sound = {
+  on: loadRaw('sound') !== '0',
+  ctx: null,
+  lastTick: 0,
+  side: 0,
+  // 最初の音はユーザーが触ったときに（ブラウザは触る前の音を止める）
+  unlock() {
+    if (!this.on) return;
+    if (!this.ctx || this.ctx.state !== 'running') setAudioSession(true);
+    if (!this.ctx) {
+      try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return; }
+      this.master = this.ctx.createGain();
+      this.master.gain.value = 0.6;
+      this.master.connect(this.ctx.destination);
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+  },
+  tone(freq, { at = 0, dur = 0.12, type = 'sine', gain = 0.06, to } = {}) {
+    if (!this.on || !this.ctx || this.ctx.state !== 'running') return;
+    const t = this.ctx.currentTime + at, o = this.ctx.createOscillator(), g = this.ctx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t);
+    if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(gain, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(this.master);
+    o.start(t);
+    o.stop(t + dur + 0.03);
+  },
+  tap() { this.tone(1100, { dur: 0.04, type: 'triangle', gain: 0.04 }); },
+  play() { this.tone(660, { dur: 0.09, gain: 0.06, to: 990 }); },
+  pause() { this.tone(660, { dur: 0.09, gain: 0.05, to: 440 }); },
+  reset() { this.tone(520, { dur: 0.06, type: 'triangle', gain: 0.05 }); this.tone(390, { at: 0.06, dur: 0.08, type: 'triangle', gain: 0.05 }); },
+  // 新しいデータ: ばらばらの高さを短く 5 つ
+  shuffle() { [0.7, 0.2, 0.9, 0.4, 0.6].forEach((h, i) => this.tone(NOTE(62 + h * 24), { at: i * 0.028, dur: 0.05, type: 'triangle', gain: 0.035 })); },
+  // 1 手: 棒の高さで音の高さを変える。比べるは軽く、動かすは少しはっきり。
+  // 速いときは間を空けて重ねない（ponytail: 間引くだけ。音を束ねたくなったら 1 本の発振器で周波数を動かす）
+  step(lane, k, force = false) {
+    const e = lane.last;
+    if (!e) return;
+    const now = performance.now();
+    if (!force && now - this.lastTick < 60) return;
+    this.lastTick = now;
+    const h = lane.a[e.i] / maxValue(state.shape, lane.a.length);
+    const f = NOTE(55 + h * 36 + (k ? 0 : 0.2));
+    if (e.t === 'compare') this.tone(f, { dur: 0.035, gain: 0.025 });
+    else this.tone(f, { dur: 0.06, type: 'triangle', gain: 0.04 });
+  },
+  // 片方がそろった
+  goal(k) { const b = k ? 67 : 72; [b, b + 7].forEach((m, i) => this.tone(NOTE(m), { at: i * 0.07, dur: 0.22, gain: 0.06 })); },
+  // 両方そろった: 勝ちは上がる 3 音、引き分けは同じ高さ 2 つ
+  finish(winner) {
+    const notes = winner < 0 ? [67, 67] : [72, 76, 79, 84];
+    notes.forEach((m, i) => this.tone(NOTE(m), { at: 0.18 + i * 0.09, dur: 0.35, type: 'triangle', gain: 0.07 }));
+  },
+};
+setAudioSession(Sound.on);
+
 const $ = (id) => document.getElementById(id);
 const fmt = (n) => n.toLocaleString('en-US');
 
@@ -134,10 +200,22 @@ function frame(t) {
   let k = Math.floor(acc);
   acc -= k;
   // 1 回の更新で両方に同じ数ずつ手を進める（そろったレーンは止まる）
+  const was = [lanes[0].done, lanes[1].done];
+  const stepped = k > 0 && !bothDone();
   while (k-- > 0 && !bothDone()) { step(lanes[0]); step(lanes[1]); }
+  if (stepped) sounds(was);
   render();
   if (bothDone()) finish();
   else requestAnimationFrame(frame);
+}
+
+// 1 手の音と、そろったレーンの音
+function sounds(was, force = false) {
+  const goal = [0, 1].filter((k) => !was[k] && lanes[k].done);
+  if (goal.length === 1 && !bothDone()) { Sound.goal(goal[0]); return; }
+  if (goal.length) return;   // 両方そろったら finish() の音だけ
+  const k = lanes[0].done ? 1 : lanes[1].done ? 0 : (Sound.side ^= 1);   // 両方動いているときは交互に
+  Sound.step(lanes[k], k, force);
 }
 
 function finish() {
@@ -154,6 +232,7 @@ function finish() {
     $('resultSub').textContent = `${fmt(w)} 手 対 ${fmt(l)} 手（${v.ratio.toFixed(1)} 倍）`;
     res.style.setProperty('--lane', v.winner ? 'var(--lane-b)' : 'var(--lane-a)');
   }
+  Sound.finish(v.winner);
   res.hidden = false;
 }
 
@@ -179,15 +258,21 @@ function togglePlay() {
 function stepOnce() {
   setPlaying(false);
   if (bothDone()) return;
+  const was = [lanes[0].done, lanes[1].done];
   step(lanes[0]); step(lanes[1]);
+  sounds(was, true);
   render();
   if (bothDone()) finish();
 }
 
-$('play').addEventListener('click', togglePlay);
+function togglePlayWithSound() {
+  togglePlay();
+  if (playing) Sound.play(); else Sound.pause();
+}
+$('play').addEventListener('click', togglePlayWithSound);
 $('stepBtn').addEventListener('click', stepOnce);
-$('resetBtn').addEventListener('click', reset);
-$('newBtn').addEventListener('click', () => { seed = newSeed(); newData(); });
+$('resetBtn').addEventListener('click', () => { reset(); Sound.reset(); });
+$('newBtn').addEventListener('click', () => { seed = newSeed(); newData(); Sound.shuffle(); });
 $('resultShare').addEventListener('click', () => {
   WebAppKit.share({ text: shareText(state, lanes[0], lanes[1]), url: location.origin + location.pathname + queryOf(state, seed) });
 });
@@ -198,7 +283,7 @@ function segment(el, items, get, set) {
     const b = document.createElement('button');
     b.className = 'seg__btn';
     b.textContent = it.label;
-    b.addEventListener('click', () => { if (get() !== it.value) { set(it.value); store(); mark(); } });
+    b.addEventListener('click', () => { if (get() !== it.value) { set(it.value); store(); mark(); Sound.tap(); } });
     el.append(b);
     return b;
   });
@@ -240,6 +325,7 @@ function openPicker(k) {
     b.lastChild.textContent = g.desc;
     b.addEventListener('click', () => {
       if (g.id !== algoOf(k)) { state[k ? 'b' : 'a'] = g.id; store(); reset(); }
+      Sound.tap();
       closeSheet(picker);
     });
     li.append(b);
@@ -247,12 +333,27 @@ function openPicker(k) {
   }));
   openSheet(picker, list.querySelector('[aria-current]'));
 }
-views.forEach((v, k) => v.algoBtn.addEventListener('click', () => openPicker(k)));
+views.forEach((v, k) => v.algoBtn.addEventListener('click', () => { openPicker(k); Sound.tap(); }));
 $('pickerClose').addEventListener('click', () => closeSheet(picker));
 picker.addEventListener('click', (e) => { if (e.target === picker) closeSheet(picker); });   // 外をタップ
 
 const help = $('help');
-$('helpBtn').addEventListener('click', () => openSheet(help, $('helpClose')));
+$('helpBtn').addEventListener('click', () => { openSheet(help, $('helpClose')); Sound.tap(); });
+
+// 音のオン・オフ（'soroekko.sound' に '1' / '0' で覚える）
+const soundBtn = $('soundBtn');
+const syncSound = () => {
+  soundBtn.setAttribute('aria-pressed', String(Sound.on));
+  soundBtn.setAttribute('aria-label', Sound.on ? '音: オン' : '音: オフ');
+};
+soundBtn.addEventListener('click', () => {
+  Sound.on = !Sound.on;
+  try { localStorage.setItem(STORE + 'sound', Sound.on ? '1' : '0'); } catch { /* 保存できなくても遊べる */ }
+  setAudioSession(Sound.on);
+  syncSound();
+  if (Sound.on) { Sound.unlock(); Sound.tap(); }
+});
+syncSound();
 $('helpClose').addEventListener('click', () => {
   if (!state.seenHelp) { state.seenHelp = true; store(); }
   closeSheet(help);
@@ -264,11 +365,12 @@ help.addEventListener('click', (e) => { if (e.target === help) $('helpClose').cl
 // マウスやタッチで押したあとのボタンに残ったフォーカスでは、Space を再生・停止に使う（押したボタンをもう一度押さない）。
 // :focus-visible はキーを押した時点で付いてしまうので使えない。最後に Tab とポインタのどちらを使ったかで決める
 let tabbing = false;
-document.addEventListener('pointerdown', () => { tabbing = false; }, true);
+document.addEventListener('pointerdown', () => { tabbing = false; Sound.unlock(); }, true);
 const keyOwnedByFocus = (e) => tabbing && e.target instanceof Element && !!e.target.closest('button, a');
 const sheetOpen = () => !picker.hidden || !help.hidden;
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Tab') tabbing = true;
+  Sound.unlock();
   if (e.key === 'Escape') {
     if (!picker.hidden) closeSheet(picker);
     else if (!help.hidden) $('helpClose').click();
@@ -280,7 +382,7 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     // 離したときにそのボタンが押されないよう、残ったフォーカスを外す
     if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) document.activeElement.blur();
-    if (!e.repeat) togglePlay();
+    if (!e.repeat) togglePlayWithSound();
   } else if (e.key === 'ArrowRight') {
     e.preventDefault();
     stepOnce();
