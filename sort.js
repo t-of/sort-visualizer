@@ -1,4 +1,4 @@
-// そろえっこの中身。画面（DOM）に触らない部分をここに集める。
+// 可視化ソートの中身。画面（DOM）に触らない部分をここに集める。
 // main.js（ブラウザ）と test.mjs（node）の両方から読む。
 //
 // やり方は function* で書き、「出来事」を 1 つずつ出す（仕様 §3「1 手」の決まり）。
@@ -302,7 +302,7 @@ const fmt = (n) => n.toLocaleString('en-US');
 export function shareText(st, A, B) {
   const v = verdict(A, B);
   const end = v.winner < 0 ? '引き分け' : `${algo(v.winner ? st.b : st.a).name}の勝ち`;
-  return `そろえっこ: ${shapeName(st.shape)}の ${st.size} 本で、${algo(st.a).name} ${fmt(v.ta)} 手・${algo(st.b).name} ${fmt(v.tb)} 手。${end}`;
+  return `可視化ソート: ${shapeName(st.shape)}の ${st.size} 本で、${algo(st.a).name} ${fmt(v.ta)} 手・${algo(st.b).name} ${fmt(v.tb)} 手。${end}`;
 }
 
 // ---- 保存と URL ----
@@ -312,7 +312,7 @@ const okShape = (x) => SHAPES.some((s) => s.id === x);
 const okSize = (x) => SIZES.includes(x);
 const okSpeed = (x) => Number.isInteger(x) && x >= 0 && x < SPEEDS.length;
 
-// soroekko.state の中身（JSON の文字列か null）から。合わない項目だけ既定に戻す
+// sort-visualizer.state の中身（JSON の文字列か null）から。合わない項目だけ既定に戻す
 export function readState(raw) {
   let s = null;
   try { s = JSON.parse(raw); } catch { /* 壊れている */ }

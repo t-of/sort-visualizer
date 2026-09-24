@@ -156,7 +156,7 @@ test('競走: はじめの組み合わせ（挿入 対 クイック）で、ほ�
 test('共有の文', () => {
   const st = { a: 'insertion', b: 'quick', shape: 'nearly', size: 40 };
   const A = { compares: 50, moves: 6 }, B = { compares: 700, moves: 1112 };
-  assert.equal(S.shareText(st, A, B), 'そろえっこ: ほぼそろいの 40 本で、挿入ソート 56 手・クイックソート 1,812 手。挿入ソートの勝ち');
+  assert.equal(S.shareText(st, A, B), '可視化ソート: ほぼそろいの 40 本で、挿入ソート 56 手・クイックソート 1,812 手。挿入ソートの勝ち');
   assert.match(S.shareText(st, A, A), /。引き分け$/);
   assert.equal(S.queryOf(st, 123), '?a=insertion&b=quick&d=nearly&n=40&s=123');
 });

@@ -1,10 +1,10 @@
-# そろえっこ — 2 つの並べ替えで競走
+# 可視化ソート — 2 つの並べ替えで競走
 
-ばらばらの棒を、2 つのやり方で同時に並べ替えて競走させる。データの並び方を変えると勝ち負けが入れ替わり、比べた回数・動かした回数も数字で分かる。
+ばらばらの棒を、2 つのやり方で同時に並べ替えて競走させる。データの並び方を変えると勝ち負けが入れ替わり、比べた回数・動かした回数も数字で分かる。（旧名 そろえっこ）
 
 ## 🔗 リンク
 
-- 遊ぶ: https://t-of.github.io/soroekko/
+- 遊ぶ: https://t-of.github.io/sort-visualizer/
 - 制作: [T.OF...](https://t-of.github.io/)
 
 ## 遊び方
@@ -41,4 +41,4 @@ node test.mjs                 # 9 種 × 4 つの並び方でそろう・1 手�
 | `main.js` | 画面・操作・Canvas の描画 |
 | `test.mjs` | `sort.js` のテスト |
 
-保存するのは `localStorage` の `soroekko.state` だけ（`{ v: 1, a, b, shape, size, speed, seenHelp }`）。データの種と途中の状態は保存しない。
+保存するのは `localStorage` の `sort-visualizer.state` だけ（`{ v: 1, a, b, shape, size, speed, seenHelp }`）。データの種と途中の状態は保存しない。

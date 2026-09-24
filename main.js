@@ -5,17 +5,24 @@ import {
 } from './sort.js';
 
 // localStorage はほかのアプリと共有される（同じ t-of.github.io のため）。
-// キーは必ず 'soroekko.' で始める。
-const STORE = 'soroekko.';
+// キーは必ず 'sort-visualizer.' で始める。
+const STORE = 'sort-visualizer.';
+const OLD_STORE = 'soroekko.'; // 旧名（id 変更前）。新しいキーがなければここから引き継ぐ。古いキーは消さない
 
 function loadRaw(key) {
-  try { return localStorage.getItem(STORE + key); } catch { return null; }
+  try {
+    const v = localStorage.getItem(STORE + key);
+    if (v !== null) return v;
+    const old = localStorage.getItem(OLD_STORE + key);
+    if (old !== null) { try { localStorage.setItem(STORE + key, old); } catch { /* 保存できなくても遊べる */ } }
+    return old;
+  } catch { return null; }
 }
 function save(key, value) {
   try { localStorage.setItem(STORE + key, JSON.stringify(value)); } catch { /* 保存できなくても遊べる */ }
 }
 
-WebAppKit.init({ title: 'そろえっこ', text: 'ばらばらの棒を、2 つのやり方で同時に並べ替えて競走させる。データの並び方を変えると勝ち負けが入れ替わり、比べた回数・動かした回数も数字で分かる。' });
+WebAppKit.init({ title: '可視化ソート', text: 'ばらばらの棒を、2 つのやり方で同時に並べ替えて競走させる。データの並び方を変えると勝ち負けが入れ替わり、比べた回数・動かした回数も数字で分かる。' });
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js');
@@ -340,7 +347,7 @@ picker.addEventListener('click', (e) => { if (e.target === picker) closeSheet(pi
 const help = $('help');
 $('helpBtn').addEventListener('click', () => { openSheet(help, $('helpClose')); Sound.tap(); });
 
-// 音のオン・オフ（'soroekko.sound' に '1' / '0' で覚える）
+// 音のオン・オフ（'sort-visualizer.sound' に '1' / '0' で覚える）
 const soundBtn = $('soundBtn');
 const syncSound = () => {
   soundBtn.setAttribute('aria-pressed', String(Sound.on));
