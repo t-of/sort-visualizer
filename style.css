@@ -1,8 +1,23 @@
 :root {
   --bg: #f3f5f7;
-  --fg: #eceef3;
-  --muted: #9aa0ab;
-  --accent: #ffd35c;
+  --card: #ffffff;
+  --fg: #1e2430;
+  --muted: #5b6475;
+  --line: rgba(30, 36, 48, 0.14);
+  --accent: #6c4bd1;
+  --lane-a: #1f8a70;   /* 上のレーン */
+  --lane-b: #6c4bd1;   /* 下のレーン */
+  /* 棒の状態（main.js の色と同じ） */
+  --st-cmp: #e08a1e;
+  --st-move: #1f9bd6;
+  --st-focus: #d6336c;
+  --st-fixed: #9aa6b8;
+  --wak-bg: var(--card);
+  --wak-fg: var(--fg);
+  --wak-muted: var(--muted);
+  --wak-line: var(--line);
+  --wak-accent: var(--accent);
+  --wak-accent-fg: #ffffff;
 }
 
 * { box-sizing: border-box; }
@@ -16,40 +31,213 @@ body {
   font-family: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
-button { font: inherit; color: inherit; }
+button { font: inherit; color: inherit; cursor: pointer; }
 [hidden] { display: none !important; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
-/* 画面の端に置くものはセーフエリアの分だけ内側に。高さは 100vh ではなく 100dvh */
+/* 画面の端に置くものはセーフエリアの分だけ内側に。高さは 100vh ではなく 100dvh。
+   縦長: 上の帯 → 棒 2 つ → 結果・操作（ここまでで最初の画面）→ 設定 → 下
+   横長・広い画面: 左に棒 2 つ（高さいっぱい）、右に上の帯・結果・操作・設定 */
 .app {
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  padding:
-    max(12px, env(safe-area-inset-top))
-    max(12px, env(safe-area-inset-right))
-    max(12px, env(safe-area-inset-bottom))
-    max(12px, env(safe-area-inset-left));
-}
-.bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.bar__title { margin: 0; font-size: 18px; }
-.bar__actions { display: flex; gap: 8px; }
-.pill {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-}
-.stage {
-  flex: 1;
-  display: grid;
-  place-items: center;
+  --pad-t: max(12px, env(safe-area-inset-top));
+  --pad-b: max(12px, env(safe-area-inset-bottom));
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--pad-t) max(12px, env(safe-area-inset-right)) var(--pad-b) max(12px, env(safe-area-inset-left));
   touch-action: manipulation;   /* ダブルタップ拡大を止める */
   user-select: none;
   -webkit-user-select: none;
 }
-.credit { text-align: center; font-size: 12px; color: var(--muted); }
-.credit a { color: inherit; }
+.first {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: calc(100dvh - var(--pad-t) - var(--pad-b));
+  min-height: 500px;
+}
+.stagecol { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.dock { display: flex; flex-direction: column; gap: 8px; }
+.more { margin-top: 20px; }
 
-/* 全画面のオーバーレイは opacity ではなく display: none で隠す */
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; }
+.bar__title { margin: 0; font-size: 19px; letter-spacing: 0.06em; }
+.icon-btn {
+  width: 44px; height: 44px; flex: none;
+  border: 1px solid var(--line); background: var(--card); border-radius: 50%;
+  font-size: 18px; font-weight: 700;
+}
+
+/* ---- レーン ---- */
+.lane {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-areas: "algo steps" "sub sub" "view view";
+  column-gap: 8px;
+  padding: 6px 10px 6px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--lane);
+  border-radius: 12px;
+}
+.lane__algo {
+  grid-area: algo;
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; min-width: 0; max-width: 100%;
+  padding: 0 12px;
+  border: 1.5px solid color-mix(in srgb, var(--lane) 40%, transparent);
+  background: color-mix(in srgb, var(--lane) 8%, var(--card));
+  border-radius: 10px;
+  color: var(--lane);
+  font-size: 15px; font-weight: 700;
+  white-space: nowrap;
+}
+.lane__caret { font-size: 12px; }
+.lane__steps {
+  grid-area: steps;
+  align-self: center; justify-self: end;
+  margin: 0;
+  font-size: 20px; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.lane.is-done .lane__steps { color: var(--lane); }
+.lane__sub {
+  grid-area: sub;
+  margin: 3px 0 4px;
+  font-size: 12px; color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lane__view { grid-area: view; position: relative; min-height: 0; }
+.lane__view canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* ---- 結果・操作 ---- */
+.btn {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 12px;
+  font-size: 14px; font-weight: 600; line-height: 1.2;
+}
+.btn:active { background: #e8ecf1; }
+.btn--small { font-size: 14px; }
+.btn--primary { width: 100%; min-height: 48px; border: 0; background: var(--accent); color: #fff; font-size: 16px; }
+.controls { display: grid; grid-template-columns: minmax(56px, 1fr) auto auto auto; gap: 6px; }
+.controls .btn { min-height: 52px; padding: 0 9px; white-space: nowrap; }
+.btn--play { display: grid; place-items: center; border: 0; background: var(--accent); color: #fff; }
+.btn--play:active { background: #5a3cbc; }
+.btn--play svg { width: 26px; height: 26px; fill: currentColor; }
+.btn--play .i-pause, .btn--play.is-playing .i-play { display: none; }
+.btn--play.is-playing .i-pause { display: block; }
+
+.result {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px;
+  padding: 8px 8px 8px 14px;
+  background: var(--card);
+  border: 1.5px solid var(--lane, var(--fg));
+  border-radius: 12px;
+  animation: rise 0.25s ease-out;
+}
+.result__text { flex: 1 1 160px; min-width: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
+#resultHead { color: var(--lane, var(--fg)); font-size: 17px; }
+#resultSub { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+@keyframes rise { from { transform: translateY(6px); opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .result { animation: none; } }
+
+/* ---- 設定 ---- */
+.settings { container-type: inline-size; display: grid; gap: 14px; }
+.set__label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.seg { display: grid; gap: 6px; }
+.seg--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.seg--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@container (max-width: 380px) { .seg--shape { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.seg__btn {
+  min-height: 44px; padding: 0 4px;
+  border: 1px solid var(--line); background: var(--card); border-radius: 10px;
+  font-size: 14px;
+}
+.seg__btn[aria-pressed="true"] { background: var(--fg); border-color: var(--fg); color: #fff; font-weight: 700; }
+
+.foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.foot__actions { display: flex; gap: 8px; }
+.foot__credit { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; font-size: 13px; color: var(--muted); }
+
+/* ---- 下から出る板・遊び方。全画面の重ねは opacity ではなく display: none で隠す ---- */
+.sheet {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-top: max(12px, env(safe-area-inset-top));
+  background: rgba(20, 24, 32, 0.42);
+}
+.sheet__panel {
+  width: min(520px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  background: var(--card);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -12px 40px -16px rgba(20, 24, 32, 0.35);
+}
+.sheet--center { align-items: center; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); }
+.sheet--center .sheet__panel { width: min(440px, 100%); border-radius: 18px; padding: 18px; }
+.sheet__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.sheet__title { margin: 0; font-size: 17px; }
+.picks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.pick {
+  width: 100%; min-height: 56px;
+  display: grid; gap: 2px; justify-items: start; text-align: left;
+  padding: 8px 12px;
+  border: 1px solid var(--line); background: var(--card); border-radius: 12px;
+}
+.pick__name { font-size: 15px; font-weight: 700; }
+.pick__desc { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+.pick[aria-current="true"] { border: 2px solid var(--lane); background: color-mix(in srgb, var(--lane) 8%, var(--card)); }
+.pick[aria-current="true"] .pick__name { color: var(--lane); }
+.pick[aria-current="true"] .pick__name::after { content: "  ✓"; }
+
+.help__list { margin: 12px 0; padding-left: 1.3em; display: grid; gap: 8px; font-size: 14.5px; line-height: 1.65; }
+.help__legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 10px; font-size: 13px; }
+.help__legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { display: inline-block; width: 8px; height: 16px; border-radius: 1px; }
+.sw--cmp { background: var(--st-cmp); }
+.sw--move { background: var(--st-move); }
+.sw--focus { background: var(--st-focus); }
+.sw--fixed { background: var(--st-fixed); }
+.help__note { margin: 0 0 14px; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+
+/* ---- 横長（スマホの横向き）・広い画面: 左に棒、右に操作 ---- */
+@media (orientation: landscape) and (max-height: 600px), (min-width: 1000px) {
+  .app {
+    max-width: 1400px;
+    height: 100dvh;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(310px, 38%, 380px);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    column-gap: 14px;
+    row-gap: 8px;
+  }
+  .first { display: contents; }
+  .bar { grid-column: 2; grid-row: 1; }
+  .stagecol { grid-column: 1; grid-row: 1 / 4; }
+  .dock { grid-column: 2; grid-row: 2; }
+  .more { grid-column: 2; grid-row: 3; min-height: 0; overflow-y: auto; margin-top: 4px; padding-bottom: 4px; }
+  .foot { margin-top: 14px; }
+}
+/* 低い横長では、レーンの見出しを 1 行にまとめて棒の場所を広げる */
+@media (orientation: landscape) and (max-height: 600px) {
+  .lane {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: "algo sub steps" "view view view";
+    padding-bottom: 4px;
+  }
+  .lane__sub { align-self: center; margin: 0; }
+  .lane__view { margin-top: 4px; }
+}
+/* 遊び方が画面に入りきらない（低い横長）ときも「はじめる」は見えたまま */
+#helpClose { position: sticky; bottom: 0; box-shadow: 0 0 0 6px var(--card); }

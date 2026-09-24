@@ -32,24 +32,102 @@
 </head>
 <body>
   <main class="app">
-    <header class="bar">
-      <h1 class="bar__title">そろえっこ</h1>
-      <div class="bar__actions">
-        <button class="pill" data-wak="install" hidden>アプリにする</button>
-        <button class="pill" data-wak="share">共有</button>
+    <!-- 縦長: ここまでが最初の画面（棒と操作）。横長・広い画面: 左に棒、右に操作と設定 -->
+    <div class="first">
+      <header class="bar">
+        <h1 class="bar__title">そろえっこ</h1>
+        <button class="icon-btn" id="helpBtn" aria-label="遊び方">?</button>
+      </header>
+      <div class="stagecol">
+        <section class="lane" id="laneA" style="--lane: var(--lane-a)" aria-label="上のレーン">
+          <button class="lane__algo" aria-haspopup="dialog"><span class="lane__name"></span><span class="lane__caret" aria-hidden="true">▾</span></button>
+          <p class="lane__steps"></p>
+          <p class="lane__sub"></p>
+          <div class="lane__view"><canvas></canvas></div>
+        </section>
+        <section class="lane" id="laneB" style="--lane: var(--lane-b)" aria-label="下のレーン">
+          <button class="lane__algo" aria-haspopup="dialog"><span class="lane__name"></span><span class="lane__caret" aria-hidden="true">▾</span></button>
+          <p class="lane__steps"></p>
+          <p class="lane__sub"></p>
+          <div class="lane__view"><canvas></canvas></div>
+        </section>
       </div>
-    </header>
 
-    <section class="stage" id="stage">
-      <!-- ここにゲーム本体 -->
-    </section>
+      <div class="dock">
+        <div class="result" id="result" role="status" hidden>
+          <p class="result__text"><b id="resultHead"></b><span id="resultSub"></span></p>
+          <button class="btn btn--small" id="resultShare">共有</button>
+        </div>
+        <div class="controls">
+          <button class="btn btn--play" id="play" aria-label="再生">
+            <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>
+            <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 4.5h4v15h-4zM13.5 4.5h4v15h-4z"/></svg>
+          </button>
+          <button class="btn" id="stepBtn">1 手</button>
+          <button class="btn" id="resetBtn">はじめから</button>
+          <button class="btn" id="newBtn">新しいデータ</button>
+        </div>
+      </div>
+    </div>
 
-    <footer class="credit">
-      <a href="/">T.OF...</a> のアプリ
-    </footer>
+    <div class="more">
+      <div class="settings">
+        <div class="set" role="group" aria-labelledby="shapeLabel">
+          <span class="set__label" id="shapeLabel">並び方</span>
+          <div class="seg seg--4 seg--shape" id="shapeSeg"></div>
+        </div>
+        <div class="set" role="group" aria-labelledby="sizeLabel">
+          <span class="set__label" id="sizeLabel">本数</span>
+          <div class="seg seg--3" id="sizeSeg"></div>
+        </div>
+        <div class="set" role="group" aria-labelledby="speedLabel">
+          <span class="set__label" id="speedLabel">速さ</span>
+          <div class="seg seg--4" id="speedSeg"></div>
+        </div>
+      </div>
+
+      <footer class="foot">
+        <div class="foot__actions">
+          <button class="btn btn--small" data-wak="install" hidden>アプリにする</button>
+          <button class="btn btn--small" data-wak="share">共有</button>
+        </div>
+        <a class="foot__credit" href="/">T.OF... のアプリ</a>
+      </footer>
+    </div>
   </main>
 
+  <!-- やり方を選ぶ板（下から出る）。隠すときは display: none -->
+  <div class="sheet" id="picker" hidden>
+    <div class="sheet__panel" role="dialog" aria-modal="true" aria-labelledby="pickerTitle">
+      <div class="sheet__head">
+        <h2 class="sheet__title" id="pickerTitle"></h2>
+        <button class="btn btn--small" id="pickerClose">閉じる</button>
+      </div>
+      <ul class="picks" id="picks"></ul>
+    </div>
+  </div>
+
+  <!-- 遊び方（初めて開いたときだけ自動で出る） -->
+  <div class="sheet sheet--center" id="help" hidden>
+    <div class="sheet__panel help" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <h2 class="sheet__title" id="helpTitle">遊び方</h2>
+      <ol class="help__list">
+        <li>上と下に、同じばらばらの棒が並んでいる。それぞれ違うやり方で、低い順に並べ替える。</li>
+        <li>▶&#xFE0E; を押すと、両方が 1 手ずつ同時に進む。<b>少ない手数で先にそろったほうが勝ち</b>。</li>
+        <li>やり方の名前をタップして変えたり、「並び方」を変えたりしてみよう。「ほぼそろい」にすると、勝ち負けがひっくり返ることがある。</li>
+      </ol>
+      <p class="help__legend">
+        <span><i class="sw sw--cmp"></i>比べている</span>
+        <span><i class="sw sw--move"></i>動いた</span>
+        <span><i class="sw sw--focus"></i>注目</span>
+        <span><i class="sw sw--fixed"></i>確定</span>
+      </p>
+      <p class="help__note">1 手 = 2 本を比べる、または棒を動かす。PC では Space で再生・停止、→ で 1 手。</p>
+      <button class="btn btn--primary" id="helpClose">はじめる</button>
+    </div>
+  </div>
+
   <script src="./webapp-kit/webapp-kit.js"></script>
-  <script src="./main.js"></script>
+  <script type="module" src="./main.js"></script>
 </body>
 </html>
